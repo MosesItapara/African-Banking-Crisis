@@ -1,0 +1,72 @@
+# Training Config
+
+file_path: "data/processed/crisis_features.csv"
+
+# Target variable
+target: "banking_crisis_encoded"
+
+# Columns that are not features:
+# - cc3: country code text (its one-hot columns cc3_* are kept)
+# - year: with a time split every test year is unseen, so it can't generalise
+# Add "systemic_crisis" here to turn this into a forecast model
+# (it moves almost 1:1 with the target in the same year - corr 0.85)
+drop_columns:
+- "cc3"
+- "year"
+
+# Train/test split
+# time_based: train on years < split_year, test on the rest
+# 1995 leaves 258 test rows with 40 crises (2010 left only 5)
+split_strategy: "time_based"
+split_year: 1995
+test_size: 0.2          # used only when split_strategy is "random"
+random_state: 42
+
+# Feature Scaling: standard | minmax | none
+scaling: "standard"
+
+# Feature selection: selectkbest | none
+feature_selection:
+  method: "selectkbest"
+  n_features: 20
+
+# Models to train
+models:
+  logistic_regression:
+    enabled: true
+    hyperparams:
+      C: 1.0
+      max_iter: 1000
+
+  random_forest:
+    enabled: true
+    hyperparams:
+      n_estimators: 100
+      max_depth: 10
+      min_samples_split: 5
+
+  xgboost:
+    enabled: true
+    hyperparams:
+      n_estimators: 100
+      max_depth: 6
+      learning_rate: 0.1
+
+# Cross-validation on the training set, used to pick the best model
+# time_series: each fold validates on later years than it trains on
+# stratified:  shuffled folds that keep the class ratio
+# stratified is used because 51 of the 54 pre-1995 crises happen after 1970:
+# time-ordered folds had 0 crises in 3 of 5 validation sets. The test set
+# stays time-based, so the final score is still an honest "future" score.
+cv_folds: 5
+cv_strategy: "stratified"
+selection_metric: "f1"
+
+# Class weights: "balanced" or null
+# (XGBoost has no class_weight - it gets scale_pos_weight = negatives / positives)
+class_weight: "balanced"
+
+# Output paths
+model_path: "models/best_model.pkl"             # full sklearn Pipeline: scaler -> selector -> model
+features_path: "models/feature_columns.json"    # input columns, in order, for inference
+results_path: "results/training_results.json"

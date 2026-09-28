@@ -1,0 +1,56 @@
+# African Crisis Prediction - Feature Engineering Config
+file_path: "data/interim/crisis_cleaned.csv"
+
+group_by: "cc3"
+
+# Lag features for historical context (computed first - later steps use them)
+lag_cols:
+  - "banking_crisis_encoded"      # last year's crisis is history, not leakage
+  - "inflation_annual_cpi"
+  - "currency_crises"
+  - "exch_usd"
+
+lag_periods: [1, 2]
+
+# Rolling window aggregations (3-year window for economic cycles)
+agg_cols:
+  - "inflation_annual_cpi"
+  - "exch_usd"
+  - "domestic_debt_in_default"
+  - "currency_crises"
+  - "inflation_crises"
+
+agg_funcs:
+  - "mean"
+  - "std"
+  - "min"
+  - "max"
+
+agg_window: 3
+
+# Temporal change features: [a, b, name] -> a - b
+diff_pairs:
+  - ["inflation_annual_cpi", "inflation_annual_cpi_lag1", "inflation_change"]
+  - ["exch_usd", "exch_usd_lag1", "exchange_volatility"]
+
+# Domain-derived ratio features: [numerator, denominator, name]
+# - ratios of two 0/1 flags only give 0/1, so they were dropped
+# - inflation / exch_usd was dropped: some rates are ~1e-25 (ZWE, AGO after
+#   redenominations), which blew the ratio up to ~1e27
+ratio_pairs: []
+
+# Crisis interactions: [a, b, name] -> a * b
+# Use LAST year's banking crisis - the current-year target would leak the answer
+crisis_pairs:
+  - ["banking_crisis_encoded_lag1", "currency_crises", "banking_currency_stress"]
+  - ["banking_crisis_encoded_lag1", "inflation_crises", "banking_inflation_stress"]
+
+# Country code is categorical - one-hot encoded last, since earlier steps group by it.
+# The original cc3 column is kept as an identifier (training must drop it).
+categorical_columns:
+  - "cc3"
+
+# Outliers are treated in preprocessing - capping again here would clip more real data.
+
+# Output
+output_path: "data/processed/crisis_features.csv"

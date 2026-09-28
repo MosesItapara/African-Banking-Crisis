@@ -1,0 +1,58 @@
+# African Crisis Prediction - Preprocessing Config
+
+file_path: "data/african_econ_crises.csv"
+
+rename_map: {}
+
+# Identifier columns that are not features (cc3 already identifies the country)
+drop_columns:
+- "case"
+- "country"
+
+# Target: string labels -> 0/1
+target:
+  source: "banking_crisis"
+  name: "banking_crisis_encoded"
+  mapping:
+    crisis: 1
+    no_crisis: 0
+
+# 0/1 flags: any value above 1 is a data-entry error (currency_crises has a few 2s)
+binary_columns:
+- "systemic_crisis"
+- "domestic_debt_in_default"
+- "sovereign_external_debt_default"
+- "independence"
+- "currency_crises"
+- "inflation_crises"
+
+nan_strategy: "median"
+group_by: "cc3"
+
+# Only continuous columns: IQR on 0/1 flags would mark every 1 as an outlier
+numeric_columns:
+- "exch_usd"
+- "gdp_weighted_default"
+- "inflation_annual_cpi"
+
+categorical_columns:
+- "cc3"
+
+# clip: cap at a global percentile
+# iqr:  cap at Q1/Q3 +/- multiplier * IQR, computed per country (group_by)
+outlier_quantiles: [0.25, 0.75]
+# exch_usd is deliberately NOT capped: its big jumps (e.g. ZWE -> 378, AGO -> 101)
+# are devaluations - the crisis signal itself. Per-country IQR there is ~0 and
+# would flatten them to 0.
+outliers_rules:
+  inflation_annual_cpi:
+    method: "clip"
+    percentile: 99
+
+drop_duplicates: true
+subset: ["cc3", "year"]
+
+# Lags and rolling windows downstream need rows in time order per country
+sort_by: ["cc3", "year"]
+
+output_path: "data/interim/crisis_cleaned.csv"

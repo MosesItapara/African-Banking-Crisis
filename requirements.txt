@@ -1,0 +1,11 @@
+notebook
+matplotlib
+numpy
+pandas
+scikit-learn
+seaborn
+flask
+xgboost
+pytest
+pyyaml
+uvicorn

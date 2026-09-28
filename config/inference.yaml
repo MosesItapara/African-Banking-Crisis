@@ -1,0 +1,23 @@
+# Inference Config
+
+model_path: "models/best_model.pkl"             # full sklearn Pipeline saved by training
+features_path: "models/feature_columns.json"    # input columns, in training order
+input_data: "data/processed/crisis_features.csv"
+
+# Score only rows from this year on. Use training's split_year so the model
+# never re-predicts rows it was trained on. null scores every row.
+score_from_year: 1995
+
+# Target column: if present in the input, metrics are printed against it
+target: "banking_crisis_encoded"
+
+# Prediction threshold for binary classification
+threshold: 0.5
+
+output_path: "results/predictions.csv"
+
+# Include feature explanations
+# XGBoost: per-row contributions (why THIS country-year was flagged)
+# other models: the model's global top features, same for every row
+explain_predictions: true
+n_top_features: 5

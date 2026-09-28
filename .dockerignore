@@ -1,0 +1,25 @@
+# Local environment (Windows binaries don't run in a Linux container)
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Not needed to run the pipeline
+.git/
+.vscode/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+notebook/
+tests/
+requirements-dev.txt
+
+# Generated outputs: the container creates its own
+data/interim/
+data/processed/
+models/
+results/
+
+# Docker files themselves
+Dockerfile
+.dockerignore
