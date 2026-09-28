@@ -82,5 +82,5 @@ jobs:
       - name: Upload API to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE: ${{ vars.HF_SPACE }}
+          HF_SPACE: ${{ vars.HF_SPACE || secrets.HF_SPACE }}
         run: python scripts/deploy_to_hf.py

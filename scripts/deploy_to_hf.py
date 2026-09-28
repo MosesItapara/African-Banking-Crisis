@@ -21,8 +21,15 @@ FILES = {
 }
 FOLDERS = ["config", "src", "models/champion"]
 
-space = os.environ["HF_SPACE"]
-token = os.environ["HF_TOKEN"]
+space = os.environ.get("HF_SPACE", "").strip()
+token = os.environ.get("HF_TOKEN", "").strip()
+
+# GitHub turns a missing secret/variable into an empty string - fail with a clear message
+if "/" not in space:
+    raise SystemExit(f"HF_SPACE must look like 'username/space-name', got {space!r}. "
+                     "Set it in GitHub: Settings > Secrets and variables > Actions > Variables.")
+if not token:
+    raise SystemExit("HF_TOKEN is empty. Set it in GitHub: Settings > Secrets and variables > Actions > Secrets.")
 
 with tempfile.TemporaryDirectory() as tmp:
     staging = Path(tmp)
