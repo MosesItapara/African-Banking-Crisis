@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-train.txt -r requirements-api.txt pytest
+
+      - name: Run pipeline (end-to-end check)
+        run: |
+          python -m src.pipelines.preprocessing_pipeline
+          python -m src.pipelines.feature_eng_pipeline
+          python -m src.pipelines.training_pipeline
+
+      - name: Quality gate - fail if the model got worse
+        run: |
+          python -c "
+          import json, sys
+          r = json.load(open('results/training_results.json'))
+          f1 = r['test_metrics'][r['best_model']]['f1']
+          print(f'best model: {r[\"best_model\"]}, test F1: {f1:.4f}')
+          sys.exit(0 if f1 >= 0.60 else 1)
+          "
+
+      - name: Run tests
+        run: python -m pytest tests -v
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build pipeline image
+        run: docker build -t african-crisis .
+
+      - name: Build API image
+        run: docker build -f Dockerfile.api -t african-crisis-api .
+
+      - name: Smoke test the API container
+        run: |
+          docker run -d --name api -p 8000:8000 african-crisis-api
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
+          curl -sf http://localhost:8000/health
+          curl -sf -X POST http://localhost:8000/predict \
+            -H "Content-Type: application/json" \
+            -d '{"cc3":"KEN","year":2015,"exch_usd":98.2,"domestic_debt_in_default":0,"sovereign_external_debt_default":0,"gdp_weighted_default":0,"inflation_annual_cpi":6.6,"independence":1,"currency_crises":0,"inflation_crises":0}'
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs api
