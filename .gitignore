@@ -22,8 +22,8 @@ models/*
 results/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
-!data/models/.gitkeep
 !models/.gitkeep
+!models/champion/
 !results/.gitkeep
 
 # Editor / OS
