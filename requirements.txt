@@ -1,12 +1,6 @@
-notebook
-matplotlib
-numpy
-pandas
-scikit-learn
-seaborn
-flask
-xgboost
-pytest
-pyyaml
-uvicorn
-mlflow
+# Core: used by the pipelines and the API (versions match the venv)
+numpy==2.0.2
+pandas==2.3.3
+scikit-learn==1.6.1
+xgboost==2.1.4
+pyyaml==6.0.3

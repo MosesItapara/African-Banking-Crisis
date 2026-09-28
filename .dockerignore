@@ -17,8 +17,14 @@ requirements-dev.txt
 # Generated outputs: the container creates its own
 data/interim/
 data/processed/
-models/
+models/*
+!models/champion
 results/
+
+# Local MLflow history (can grow large; images don't need it)
+mlruns/
+mlartifacts/
+mlflow.db
 
 # Docker files themselves
 Dockerfile

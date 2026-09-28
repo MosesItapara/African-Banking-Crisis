@@ -1,0 +1,30 @@
+FROM python:3.9-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# XGBoost (imported by the API) needs the OpenMP runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt requirements-api.txt ./
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+COPY config/ config/
+COPY src/ src/
+COPY data/african_econ_crises.csv data/african_econ_crises.csv
+COPY models/champion/ models/champion/
+
+# Build the cleaned country history the API uses for lags and rolling windows
+RUN python -m src.pipelines.preprocessing_pipeline
+
+RUN useradd --create-home appuser && chown -R appuser /app
+USER appuser
+
+EXPOSE 8000
+
+# Hosting platforms set $PORT; default to 8000 locally
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 60 src.api.app:app"]

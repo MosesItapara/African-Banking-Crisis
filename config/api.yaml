@@ -1,0 +1,27 @@
+## API Config
+
+model_dir: "models/champion"
+history_path: "data/interim/crisis_cleaned.csv"
+feature_config: "config/feature_engineering.yaml"
+
+threshold: 0.5
+n_top_features: 5
+
+# Raw indicators a request must send for the new year
+required_fields:
+- "exch_usd"
+- "domestic_debt_in_default"
+- "sovereign_external_debt_default"
+- "gdp_weighted_default"
+- "inflation_annual_cpi"
+- "independence"
+- "currency_crises"
+- "inflation_crises"
+
+# Of those , the ones that must be 0 or 1
+binary_fields:
+- "domestic_debt_in_default"
+- "sovereign_external_debt_default"
+- "independence"
+- "currency_crises"
+- "inflation_crises"

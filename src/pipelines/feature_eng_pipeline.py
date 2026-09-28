@@ -88,6 +88,18 @@ class FeatureEngineeringPipeline:
         print(f"\n Saved: {output_path}")
         return self
 
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Run the feature steps on an in-memory DataFrame (used by the API), without reading or saving"""
+        self.df = df.copy()
+        (self.compute_lags()
+         .compute_rolling_aggs()
+         .compute_diffs()
+         .compute_ratios()
+         .compute_interactions()
+         .handle_missing_values()
+         .encode_categorical())
+        return self.df
+
     def run(self) -> pd.DataFrame:
         """Execute full pipeline"""
         (self.read_data()

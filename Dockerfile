@@ -11,9 +11,10 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Dependencies first: this layer is cached until requirements.txt changes
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Dependencies first: this layer is cached until the requirements change
+# (training logs to MLflow, so it needs the train requirements)
+COPY requirements.txt requirements-train.txt ./
+RUN pip install --no-cache-dir -r requirements-train.txt
 
 # Then the code, config and raw data
 COPY main.py .

@@ -1,0 +1,7 @@
+# Local development (the venv): everything plus notebooks and tests
+-r requirements-train.txt
+-r requirements-api.txt
+notebook
+matplotlib
+seaborn
+pytest
