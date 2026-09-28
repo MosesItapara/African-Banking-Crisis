@@ -114,12 +114,19 @@ class TrainingPipeline:
         n_folds = self.cfg.get("cv_folds", 5)
         metric = self.cfg.get("selection_metric", "f1")
 
-        if self.cfg.get("cv_strategy", "time_series") == "time_series":
-            folds = TimeSeriesSplit(n_splits=n_folds).split(self.X_train)
+        strategy = self.cfg.get("cv_strategy", "stratified")
+
+        if strategy == "time_holdout":
+            # Train on years < validation_year, validate on validation_year .. split_year-1
+            years = self.df.loc[self.X_train.index, "year"].values
+            val_year = self.cfg["validation_year"]
+            folds = [(np.where(years < val_year)[0], np.where(years >= val_year)[0])]
+            n_folds = 1
+        elif strategy == "time_series":
+            folds = list(TimeSeriesSplit(n_splits=n_folds).split(self.X_train))
         else:
-            folds = StratifiedKFold(n_splits=n_folds, shuffle=True,
-                                    random_state=self.cfg.get("random_state", 42)).split(self.X_train, self.y_train)
-        folds = list(folds)
+            folds = list(StratifiedKFold(n_splits=n_folds, shuffle=True,
+                                         random_state=self.cfg.get("random_state", 42)).split(self.X_train, self.y_train))
 
         print(f"\n  {n_folds}-fold CV ({metric}):")
         for model_name, pipeline in self.pipelines.items():
@@ -200,15 +207,86 @@ class TrainingPipeline:
         print(f"\n Saved: {model_path}, {features_path}, {results_path}")
         return self
 
+
+    def log_to_mlflow(self):
+        """Log config, CV and test metrics, artifacts and the best model to MLFLOW"""
+        ml_cfg = self.cfg.get("mlflow", {})
+        if not ml_cfg.get("enabled", False):
+            return self
+
+
+        import mlflow
+        import mlflow.sklearn
+
+        mlflow.set_tracking_uri(ml_cfg.get("tracking_uri", "sqlite:///mlflow.db"))
+        mlflow.set_experiment(ml_cfg.get("experiment_name", "default"))
+
+        with mlflow.start_run(run_name=ml_cfg.get("run_name")):
+        # What was run
+            mlflow.log_params({
+                "split_strategy": self.cfg["split_strategy"],
+                "split_year": self.cfg.get("split_year"),
+                "drop_columns": self.cfg.get("drop_columns", []),
+                "scaling": self.cfg.get("scaling"),
+                "n_features": self.cfg.get("feature_selection", {}).get("n_features"),
+                "cv_strategy": self.cfg.get("cv_strategy"),
+                "class_weight": self.cfg.get("class_weight"),
+                "best_model": self.best_model_name,
+                "n_train": len(self.X_train),
+                "n_test": len(self.X_test),
+            })
+            for model_name, config in self.cfg.get("models", {}).items():
+                if config.get("enabled", False):
+                    mlflow.log_params({f"{model_name}__{k}": v for k, v in config.get("hyperparams", {}).items()})
+
+            # How it did: CV for every model, test for every model
+            for model_name, cv in self.cv_scores.items():
+                mlflow.log_metric(f"cv_{model_name}_mean", cv["mean"])
+                mlflow.log_metric(f"cv_{model_name}_std", cv["std"])
+
+            for model_name, metrics in self.results.items():
+                for metric, value in metrics.items():
+                    if metric == "confusion_matrix":
+                        (tn, fp), (fn, tp) = value
+                        mlflow.log_metrics({f"test_{model_name}_tn": tn, f"test_{model_name}_fp": fp,
+                                            f"test_{model_name}_fn": fn, f"test_{model_name}_tp": tp})
+
+                    elif value is not None:
+                        mlflow.log_metric(f"test_{model_name}_{metric}", value)
+
+            # Headline numbers for the chosen model, easy to sort by in the UI
+            best = self.results[self.best_model_name]
+            mlflow.log_metrics({f"best_{k}": v for k, v in best.items()
+                            if k != "confusion_matrix" and v is not None})
+
+            #Files
+            mlflow.log_artifact(self.cfg["features_path"])
+            mlflow.log_artifact(self.cfg["results_path"])
+            mlflow.log_dict(self.cfg, "training_config.yaml")
+
+            # The full sklearn Pipeline, registered as a new version
+            mlflow.sklearn.log_model(
+                self.pipelines[self.best_model_name],
+                name= "model",
+                registered_model_name = ml_cfg.get("registered_model_name"),
+                input_example = self.X_train.head(3).astype("float64"),
+            )
+
+            print(f"\n Logged to MLFLOW: experiment '{ml_cfg.get('experiment_name')}', "
+                f"run '{ml_cfg.get('run_name')}'")
+
+            return self
+
     def run(self) -> dict:
         """Execute full training pipeline"""
         (self.load_data()
-         .split_data()
-         .build_pipelines()
-         .cross_validate()
-         .train_models()
-         .evaluate()
-         .save_best_model())
+        .split_data()
+        .build_pipelines()
+        .cross_validate()
+        .train_models()
+        .evaluate()
+        .save_best_model()
+        .log_to_mlflow())
 
         return self.results
 

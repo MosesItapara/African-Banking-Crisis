@@ -30,3 +30,8 @@ results/*
 .vscode/
 .DS_Store
 Thumbs.db
+
+# MLFlow
+mlruns/
+mlartifacts/
+mlflow.db

@@ -9,3 +9,4 @@ xgboost
 pytest
 pyyaml
 uvicorn
+mlflow

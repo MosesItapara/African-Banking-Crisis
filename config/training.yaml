@@ -13,6 +13,7 @@ target: "banking_crisis_encoded"
 drop_columns:
 - "cc3"
 - "year"
+- "systemic_crisis"  # Added column to be dropped for comparison
 
 # Train/test split
 # time_based: train on years < split_year, test on the rest
@@ -59,7 +60,8 @@ models:
 # time-ordered folds had 0 crises in 3 of 5 validation sets. The test set
 # stays time-based, so the final score is still an honest "future" score.
 cv_folds: 5
-cv_strategy: "stratified"
+cv_strategy: "time_holdout"
+validation_year: 1985     # train < 1985, validate 1985-1994, test 1995+
 selection_metric: "f1"
 
 # Class weights: "balanced" or null
@@ -70,3 +72,11 @@ class_weight: "balanced"
 model_path: "models/best_model.pkl"             # full sklearn Pipeline: scaler -> selector -> model
 features_path: "models/feature_columns.json"    # input columns, in order, for inference
 results_path: "results/training_results.json"
+
+# Experiment tracking
+mlflow:
+  enabled: true
+  tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "african-banking-crisis"
+  run_name: "forecast_time_holdout"  # "baseline_with_systemic" the changed line for comparison "forecast_time_holdout"
+  registered_model_name: "banking-crisis-classifier"
